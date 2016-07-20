@@ -1,0 +1,31 @@
+Lab Steps
+1	Locate the Project
+1.1	If you successfully completed the Average application from the lab Computing an Average, then use your existing Average project and skip this step. Otherwise, locate and use the Partitioner project found in the Lab Projects working set in Eclipse.
+2	Write the Partitioner Class
+2.1	Add a new static inner class to AverageJob named AveragePartitioner that extends the org.apache.hadoop.mapreduce.Partitioner class.
+2.2	What should the two generic types be for your AveragePartitioner class?Answer :  Both types should be Text.
+2.3	Add the appropriate generic types to AveragePartitioner.
+3	Define the getPartition Method
+3.1	Add the getPartition method to AveragePartitioner. The method signature should look like:
+public int getPartition(Text key, Text value,
+                           int numReduceTasks)
+3.2	The keys coming in to this method are U.S. state abbreviations. Write the getPartition method so that states that start with the same letter go to the same Reducer.
+4	Configure the Partitioner
+4.1	In the run method of Average, use the setPartitionerClass of Job to configure AveragePartitioner as the Partitioner for this MapReduce job.
+4.2	Also within the run method, set the number of Reducers to 5:job.setNumReduceTasks (5);
+4.3	Change the job’s output directory from average to counties/output (unless you are using the Partitioner project, in which case this step is already done for you):
+Path out = new Path("counties/output");
+4.4	Save your changes to AverageJob.java.
+5	Run the Application
+5.1	Select Run As -> Gradle Build to build the JAR file for the project.
+5.2	Run the AverageJob using the following command (run from the folder where average.jar is located):
+# yarn jar average.jar
+6	Verify the Results
+6.1	Verify you have five output files in a new folder named counties/output:
+# hadoop fs -ls counties/output
+6.2	View the contents of some of the files to ensure the states were correctly partitioned to the five Reducers:
+# hadoop fs -cat counties/output/part-r-00000
+# hadoop fs -cat counties/output/part-r-00001
+...and so on
+6.3	What (if anything) would have been different with the output files if you ran this MapReduce job without the AveragePartitioner?Answer: The states would have been partitioned by hashing the string of the state’s name, so the partitioning would have been completely different.If you have time, comment out the line of code in the run method where you called setPartitionerClass, run the job again and compare the output that you get without the partitioner.
+ 	Result: You have written a Partitioner that splits the input of a MapReduce job over 5 Reducers.

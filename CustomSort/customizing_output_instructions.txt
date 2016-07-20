@@ -1,0 +1,99 @@
+Lab Steps
+1	Import the CustomSort Project
+1.1	This lab is a continuation of the CustomSort application from the lab Custom Sorting. If you did not complete that lab, then import the solution in the /root/java/labs/Solutions/Lab4.3 folder. Otherwise, use your existing CustomSort project in Eclipse to complete this lab.
+2	Define a Custom OutputFormat Class
+2.1	Open DividendJob.java and look in the run method. What is the current Output Format of this job? Answer: TextOutputFormat
+2.2	You are going to replace the current Output Format with a custom class that you define. Start by adding a new class to the customsort package named DividendOutputFormat that extends FileOuputFormat.
+2.3	What should the data types of the K and V generics be? Answer : K should be NullWritable, and V should be DividendChange
+2.4	 Change K to the appropriate data type, and change V to the appropriate data type.
+2.5	Use Eclipse to generate the unimplemented getRecordWriter method from the parent class FileOutputFormat.
+2.6	Within getRecordWriter , create a file to write the output to, using the job name and the task ID as part of the filename:
+int partition =
+        job.getTaskAttemptID().getTaskID().getId();
+Path outputDir =
+        FileOutputFormat.getOutputPath(job);
+Path file = new Path(outputDir.getName()
+        + Path.SEPARATOR
+        + job.getJobName()
+        + "_" + partition);
+FileSystem fs =
+        file.getFileSystem(job.getConfiguration());
+FSDataOutputStream fileOut = fs.create(file);
+2.7	Pass the FSDataOutputStream object to a new DividendRecordWriter and return it:
+return new DividendRecordWriter(fileOut);
+2.8	Save your changes to DividendOutputFormat.java. You will have a compiler error because the DividendRecordWriter class does not exist yet, but you will define that next.
+3	Define a Custom RecordWriter
+3.1	Add a new static inner class to DividendOutputFormat named DividendRecordWriter that extends RecordWriter .
+3.2	Change the key generic K to NullWritable and the value generic V to DividendChange .
+3.3	Add two fields to DividendRecordWriter :
+public final String SEPARATOR = ",";
+private DataOutputStream out;
+3.4	Let Eclipse generate the unimplemented close and write methods for your DividendRecordWriter class.
+3.5	In the close method, close the output stream of the out field.
+3.6	In the write method, instantiate a new StringBuilder object:
+StringBuilder result = new StringBuilder();
+3.7	Using the append method of StringBuilder and the data in the DividendChange parameter, build a string that looks like:
+ABC,2012-07-14,0.045
+In this string, “ABC” is the stock’s symbol, then a comma (use the SEPARATOR field), then the date, then another comma, then the change in dividend price.
+3.8	Append a newline character to the end of result.
+3.9	Use the write method of the out parameter to write out the StringBuilder instance:
+out.write(result.toString().getBytes());
+3.10	Add a constructor to DividendRecordWriter that has a DataOutputStream parameter and assigns it to the out field.
+3.11	Save your changes to DividendOutputFormat.java.
+4	Modify the Job
+4.1	Open DividendJob.java.
+4.2	In the run method, change the output format of this job from TextOutputFormat to DividendOutputFormat .
+4.3	Set the number of reduce tasks to 3.
+4.4	Save your changes to DividendJob.java.
+5	Run the Job
+5.1	Build the project to create dividendgrowth.jar.
+5.2	Run the job:
+# yarn jar dividendgrowth.jar
+5.3	When the job is finished, you should see 3 files named DividendJob _# in the growth folder of HDFS.
+# hadoop fs -ls growth
+Found 4 items
+-rw-r--r--   3 root root      76134 growth/DividendJob_0
+-rw-r--r--   3 root root      72183 growth/DividendJob_1
+-rw-r--r--   3 root root      89261 growth/DividendJob_2
+-rw-r--r--   3 root root          0 growth/_SUCCESS
+5.4	Where did these filenames come from? Answer :  You created this file and gave it this name in the getRecordWriter method of DividendOutputFormat.
+5.5	View the contents of DividendJob_0:
+# hadoop fs -cat growth/DividendJob_0
+...
+AZZ,2000-03-08,0.065
+AZZ,2001-03-08,-0.06
+AZZ,2001-04-10,0.06
+AZZ,2010-01-28,0.16999999999999998
+Notice the “A” stocks are in DividendJob_0, the “B” stocks are in DividendJob_1, and the “C” stocks are in DividendJob_2.
+6	Configure Multiple Outputs
+6.1	In this step, you will learn how to use the MulitpleOutputs class to configure a Reducer to send output to multiple files. Start by commenting out the line of code in the run method of DividendJob where you set the output format to DividendOutputFormat :
+//job.setOutputFormatClass(DividendOutputFormat.class);
+6.2	In the run method, define two named outputs, one for positive growth dividends and one for negative growth:
+MultipleOutputs.addNamedOutput(job, "positive",
+                TextOutputFormat.class,
+                NullWritable.class,
+                DividendChange.class);
+MultipleOutputs.addNamedOutput(job, "negative",
+                TextOutputFormat.class,
+                NullWritable.class,
+                DividendChange.class);
+6.3	Add a field of type MultipleOutputs < NullWritable , DividendChange > named mos to the DividendGrowthReducer class.
+6.4	Initialize the mos field in the setup method of DividendGrowthReducer.
+6.5	In the reduce method of DividendGrowthReducer, comment the line of code where you write out the key/value pair using context. Instead, write out the key/value pairs to the named outputs based on whether the growth is positive or negative:
+if(growth > 0) {
+   mos.write("positive",outputKey,outputValue,"pos");
+} else {
+   mos.write("negative",outputKey,outputValue,"neg");
+}
+6.6	Based on the code above, what will the names of the output files be when this code executes? Answer : The “neg” and “pos” arguments are the prefixes to the filenames, so they will be neg-r-0000x and pos-r-0000x.
+6.7	Add the cleanup method to DividendGrowthReducer. Within cleanup, invoke the close method on mos.
+7	Run the Job Again
+7.1	Save your changes to DividendJob , and then build and run the job again.
+7.2	Look in the growth folder for two sets of files from each reducer: neg-r-0000# and pos-r-0000#. Verify that all the positive growths appear in the pos-r-0000# files and all the negative growths appear in neg-r-0000#.
+8	Remove the Empty Output File
+8.1	Look at the contents of part-r-00000 in the growth folder of the CustomSort project. Why does this file exist, and why is it empty? Answer : The files exist because the TextOutputFormat creates them by default, even if no data is written to them. The files remain empty because your DividendOutputFormat outputs all records to the “pos” and “neg” files.
+8.2	You can avoid the empty files getting created by using the LazyOutputFormat class. Add the following line of code to the run method of DividendJob:
+LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
+8.3	Save your changes to DividendJob.java and build and run the program again.
+8.4	View the growth folder again and the part-r-0000# files should not appear this time.
+ 	Result: In this lab, you wrote a custom output format that outputs DividendChange objects. You learned how to specify the file name and write a custom RecordWriter. You also saw how to use the MulitpleOutputs class to output data to multiple files.

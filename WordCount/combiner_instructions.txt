@@ -1,0 +1,22 @@
+Lab Steps
+1	Run a MapReduce Job
+1.1	From a terminal window, change directories to the WordCount project:
+# cd ~/java/workspace/WordCount
+1.2	Remove the previous Grep output folder in HDFS:
+# hadoop fs -rm -R grep_output
+1.3	Run the Grep job and search for the string “the” (this is the same command that you ran in the previous lab):
+# yarn jar grep.jar constitution.txt grep_output the
+1.4	Look closely at the output of this job. At the end of the result, the built-in counters are output. How many records did the Mapper output? Answer: 828How many records did the Reducer input?Answer: 828
+2	Configure the Combiner
+2.1	Open Grep.java from the WordCount project in Eclipse. You will need to switch back to the Getting Started working set.
+2.2	In the run method of Grep , use the setCombinerClass method of Job to configure IntSumReducer as the Combiner.
+2.3	Save your changes to Grep.java.
+3	Run the Program
+3.1	Select Run As -> Gradle Build on the WordCount project to update grep.jar.
+3.2	Delete the grep_output folder in HDFS:
+# hadoop fs -rm -R grep_output
+3.3	Run Grep using the same command line arguments as before:
+# yarn jar grep.jar constitution.txt grep_output the
+3.4	Looking at the output of the MapReduce job, how many records were output by the Mapper this time? Answer: 828How many records were input to the Reducer? Answer: 32How many records were output by the Combiner? Answer: 32
+3.5	What was the tradeoff and what was the benefit from defining and using a Combiner in this example?Answer:  The tradeoff is the overhead of the combining phase, but the benefit is clearly worth it as the number of records that had to be shuffled and sorted was reduced by 96% for this particular execution.
+ 	Result: In certain situations, you can simply use an existing Reducer as a Combiner. More specifically, if the data types of the key/values pairs that come into the Reducer are the same data types that the Reducer outputs, then it is possible that your Reducer can also be a Combiner. The other important requirement is that the Reducer can be executed multiple times without changing the final output of your MapReduce job.However, in many situations the Reducer cannot be used and you need to write a different Combiner class, which you will now do in the next lab.

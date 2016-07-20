@@ -1,0 +1,136 @@
+
+Lab Steps
+1 	View the Project
+1.1 	In Eclipse, expand the folder of the CustomSort. It will contain compiler errors; ignore them for now.
+1.2 	To understand the data, expand the dividends folder, right-click on NYSE_dividends_A.csv, and select Open With -> Text Editor. The data in this lab is actual dividend information from the New York Stock Exchange:
+
+    exchange,stock_symbol,date,dividends
+    NYSE,AIT,2009-11-12,0.15
+    NYSE,AIT,2009-08-12,0.15
+    NYSE,AIT,2009-05-13,0.15
+    NYSE,AIT,2009-02-11,0.15
+    NYSE,AIT,2008-11-12,0.15
+    NYSE,AIT,2008-08-13,0.15
+    NYSE,AIT,2008-05-13,0.15
+    NYSE,AIT,2008-02-13,0.15
+    NYSE,AIT,2007-11-13,0.15
+    NYSE,AIT,2007-08-13,0.15
+    NYSE,AIT,2007-05-11,0.12
+    NYSE,AIT,2007-02-13,0.12
+    NYSE,AIT,2006-11-13,0.12
+    NYSE,AIT,2006-08-11,0.12
+
+In the data above, AIT is the stock’s symbol, then the date appears along with the amount of dividend paid on that date. For example, AIT paid a dividend of $0.15 per share on November 12, 2009.
+1.3 	Notice stock dividends do not change very often. The data in the dividends folder is going to be the input for this MapReduce job. You are going to read in this data and output the dates when a dividend actually changed, along with the change (growth) in dollars and cents. For example, in the data shown above your MapReduce job should output the dividend for AIT grew $0.03 on August 13, 2007.
+2 	Define a Custom Key Class
+2.1 	Open the file DividendJob.java found in the customsort package.
+2.2 	Notice a DividendGrowthMapper class is provided for you, and that the data type of the output key is Stock. The Stock class is not written yet, but you will do that now.
+2.3 	Add a new class to the customsort package named Stock that implements WritableComparable <Stock>:
+
+    public class Stock implements WritableComparable<Stock>
+
+2.4 	Add two fields to the Stock class:
+
+    private String symbol;
+    private String date;
+
+2.5 	Add public setter and getter methods for both fields.
+3 	Implement Writable
+3.1 	If you have not done so already, let Eclipse add the necessary method signatures from WritableComparable that need to be implemented in Stock.
+3.2 	Within the write method, use the out parameter to write the symbol field first, then the date field:
+
+    out.writeUTF(symbol);
+    out.writeUTF(date);
+
+3.3 	Use the readUTF method of the in parameter to read in the symbol and date values (in that order) and assign them to the appropriate fields.
+4 	Implement Comparable
+4.1 	The compareTo method in Stock is really where the sorting occurs. You want to sort the Stock objects by symbol and ascending date. The first step is to see if the two stocks’ symbols are identical.
+
+    int response = this.symbol.compareTo(o.symbol);
+
+4.2 	If response is not equal to 0, then simply return it. (In other words, if the stock symbols are not the same, then we can ignore the date field.)
+4.3 	4.3. If response equals 0, then the two stock symbols are identical and we need to now sort them by their dividend date. Set the response equal to:
+
+    response = this.date.compareTo(o.date);
+
+4.4 	Return response from the compareTo method.
+4.5 	Save your changes to Stock.java. The Stock class is now ready to be used as the key for your Mapper’s output.
+5 	Write a Custom Partitioner
+5.1 	Notice in DividendJob.Java that a StockPartitioner class that extends the Partitioner class has been stubbed out for you.
+5.2 	Have the getPartition method retrieve the first character of the stock’s symbol. Then return that value modulus the number of partitions:
+
+    char firstLetter = key.getSymbol().trim().charAt(0);
+    return (firstLetter - 'A') % numReduceTasks;
+
+5.3 	In the run method, set the Job to use StockPartitioner as its partitioner.
+6 	Define a Custom Value Class
+6.1 	6.1. The Reducer is going to output a custom value type that you define. Start by adding a class to the customsort package named DividendChange that implements the Writable interface.
+6.2 	Add three fields to DividendChange :
+
+    private String symbol;
+    private String date;
+    private double change;
+
+6.3 	Use Eclipse to generate public setter and getter methods for each field.
+6.4 	In the write method, use the writeUTF method of out to write out the symbol field and date field.
+6.5 	Use writeDouble to write out the change field.
+6.6 	In the readFields method read in and initialize the symbol, date and change fields.
+6.7 	Add a toString method to DividendChange that looks like the following:
+
+    @Override
+    public String toString() {
+    return symbol + "\t" + date + "\t" + change;
+    }
+
+6.8 	Save your changes to DividendChange.java. It is now ready to be used as an output value for your Reducer. Now your DividendJob class should no longer have a compiler error.
+7 	Write a Group Comparator
+7.1 	Notice the Mapper outputs key/value pairs whose keys will never be equal, because the date is a part of the key and there is only one dividend per date. This is not necessarily a problem, except that no grouping will appear during the shuffle/sort phase. In this step, you are going to define a group comparator so that stocks with the same symbol are grouped together.
+7.2 	Add a new class named StockGroupComparator that extends WritableComparator .
+7.3 	Add a protected, no-argument constructor that passes Stock.class and true to the parent constructor:
+
+    protected StockGroupComparator() {
+    super(Stock.class,true);
+    } 
+
+7.4 	Use Eclipse to override the compare method. Add the overloaded version with the two WritableComparable parameters.
+7.5 	Cast both of the parameters to Stock references:
+
+    Stock lhs = (Stock) a;
+    Stock rhs = (Stock) b;
+
+7.6 	Return the result of comparing the symbol fields of the two Stock objects. (Therefore, if the stock symbols are equal, then the two Stock objects are in the same group):
+
+    return lhs.getSymbol().compareTo(rhs.getSymbol());
+
+7.7 	Save your changes to StockGroupComparator.java.
+7.8 	In the run method of DividendJob, configure the job to use StockGroupComparator:
+
+    job.setGroupingComparatorClass(StockGroupComparator.class);
+
+Now stocks will be grouped by stock symbol during the shuffling, then sorted by date during the sort phase.
+8 	View the Reducer Class
+8.1 	The Reducer is provided for you as a static inner class in DividendJob, but there are a couple of new concepts you should be aware of. Notice there is a NullWritable field in DividendGrowthReducer :
+
+    private NullWritable outputKey = NullWritable.get();
+
+8.2 	Notice in the for loop that if the difference between the current and previous dividend is non-zero, then we write out a key/value pair using the outputKey and outputValue fields of StockDividendReducer.
+9 	Run the Application
+9.1 	Select Run As -> Gradle Build to build the dividendgrowth.jar file.
+9.2 	You should already have the dividend data in HDFS in the dividends folder:
+
+    # hadoop fs -ls dividends
+
+9.3 	Run the job:
+
+    # yarn jar dividendgrowth.jar 
+
+9.4 	When your job completes, look at the values of the counters that are output. Specifically, how many records were input to the Reducers? Answer: 27,529 records were input to the reducerHow many groups were input to the Reducers?Answer: 495 groupsWhy are these values not the same? Answer: The records were grouped by stock symbol, so there must be 495 distinct Stock symbols in the input data.
+9.5 	Your partitioner should have created 3 different output files in the growth folder:
+
+    # hadoop fs -ls growth
+
+9.6 	Use the -cat command to view the output files:
+
+    # hadoop fs -cat growth/part-r-00000
+
+  	Result: The DividendJob computed the change in dividends of stocks traded on the NYSE. In learning how to implement a custom sort of Mapper keys, this lab included a lot of other useful MapReduce concepts, including writing a custom key and value classes, a custom Partitioner to ensure key/value pairs were sent to the proper Reducer, and a Group Comparator to create a custom grouping. Also, it demonstrated implementing the secondary sort behavior, and using the NullWritable data type.There is one other aspect of this MapReduce job that could be done to improve its design, and that is to write a custom OutputFormat for writing values of type DividendChange . This is shown in the lab Customizing Output, following discussion on the details of input and output formats in the lesson Input and Output Formats.

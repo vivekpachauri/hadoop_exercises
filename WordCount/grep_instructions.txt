@@ -1,0 +1,67 @@
+Lab Steps
+1	Create the Grep Class
+1.1	Within the WordCount project in Eclipse, define a new package in the src /main/java folder named grep.
+1.2	Within the grep package, define a new class named Grep that extends Configured and implements the Tool interface. Include the main method in Grep as well.
+2	Declare the Mapper Inner Class
+2.1	You are going to define the Mapper class as an inner class of Grep, so follow these directions carefully. Right-click on Grep.java in the Package Explorer view of Eclipse and select New -> Class.
+2.2	Check the box labeled “Enclosing type”, which should already contain your grep.Grep class.
+2.3	Check the static box in the Modifiers section.
+2.4	Uncheck the box so that main does not appear in the class.
+2.5	Name the new class GrepMapper and have it extend the Mapper class. Your settings should look like the following:
+
+2.6	Click the Finish button.
+2.7	The GrepMapper is going to receive key/value pairs from TextInputFormat, so change KEYIN and VALUEIN to their appropriate data types.
+2.8	The GrepMapper is going to output text/integer pairs, so change KEYOUT to Text and VALUEOUT to IntWritable.
+3	Define the setup Method
+3.1	The GrepMapper is going to search through lines of text for a given string. You are going to store the search string as a field in the GrepMapper class and initialize the field in the setup method. Start by adding three fields to GrepMapper:
+private String searchString;
+private Text outputKey = new Text();
+private final static IntWritable ONE =
+                                   new IntWritable(1);
+3.2	Right-click in the GrepMapper class and select Source -> Override/Implement Methods….
+3.3	Select both the map and setup methods. Click the OK button.
+3.4	Delete the auto-generated call to super in the setup method.
+3.5	Notice the setup method has a single argument of type Context. You can use the Context to obtain information about the Job. Later when you write the main method, you are going to store a command-line argument in the Context as a property named searchString. In the setup method, retrieve this property and store it in the searchString field:
+searchString =
+       context.getConfiguration().get("searchString");
+4	Define the map Method
+4.1	Within the map method, remove the auto-generated call to super.
+4.2	The value parameter contains a line of text from your big data. Split that line of text into words (using a space as the separator and backslash as the escape character):
+String [] words = StringUtils.split(value.toString(),
+                                    '\\',' ');
+4.3	Write a for loop that iterates through the words array. If a word in the array contains searchString (Hint: Use the contains method in java.lang.String), then output that word as a key and the number 1 as its value using the outputKey and one field, respectively. (Be sure to initialize outputKey with the word before you write it.)
+4.4	The GrepMapper is now ready. Save your changes and continue on to the next step.
+5	Define the run Method
+5.1	Copy-and-paste the contents of the run method from WordCountJob into the run method in Grep.
+5.2	In the constructor call for Job, change the name of the Job from “WordCountJob” to “GrepJob”.
+5.3	After the call to job.getConfiguration ( ), add the following line of code which stores the third command-line argument as a property named "searchString" in the Configuration object:
+conf.set("searchString", args[2]);
+5.4	Change the Mapper class of this job to GrepMapper.
+5.5	Change the reducer class to IntSumReducer, defined in the org.apache.hadoop.mapreduce.lib.reduce package.
+6	Define the main Method
+6.1	Copy-and-paste the contents of main from WordCountJob into the main method of Grep.
+6.2	Change the second argument of ToolRunner.run to be a new Grep ( ) (instead of a new WordCountJob ()).
+6.3	Save your change to Grep.java.
+7	Build the JAR
+7.1	Open the file build.gradle in your WordCount project in Eclipse by double-clicking on it.
+7.2	Change the project.ext.mainclass property to grep .Grep:
+project.ext.mainclass = 'grep.Grep'
+7.3	Change the project.ext.archiveName property to grep.jar:
+project.ext.archiveName = 'grep.jar'
+7.4	Save your changes to build.gradle.
+7.5	Right-click on the WordCount project and select Run As -> Gradle Build.
+7.6	From a terminal window, change directories to ~/java/workspace/ WordCount:
+# cd ~/java/workspace/WordCount
+7.7	Verify you have a new file named grep.jar:
+# ls -la
+7.8	Verify you already have the file constitution.txt in your home folder in HDFS:
+# hadoop fs -cat constitution.txt
+8	Run the Program
+8.1	Run the Grep MapReduce program, searching constitution.txt for words containing the string “the”. Output the results in a folder named grep_output:
+# yarn jar grep.jar constitution.txt grep_output the
+8.2	The job will take a minute to run. When finished, run the following command to view the contents of grep_output. You should see a single output file named part-r-00000:
+# hadoop fs -ls grep_output
+8.3	To view the contents of part-r-00000, enter the following cat command:
+# hadoop fs -cat grep_output/part-r-00000
+8.4	Verify the output contains words that have “the” in them, like “thereof”, “another”, “otherwise”, and of course the word “the,” which appears 662 times in the Constitution.
+ 	Result: You have successfully written, packaged and executed a MapReduce application on a Hadoop cluster. You also wrote a single Configured class that contained the Mapper as a static inner class. You could have easily written the Reducer as an inner class also, which is a common design in MapReduce programming.

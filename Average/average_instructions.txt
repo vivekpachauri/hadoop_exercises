@@ -1,0 +1,77 @@
+Lab Steps
+1	View the Project
+1.1	Expand the folder of the Average project in Eclipse.
+1.2	Notice the Average project consists of a single class named average.AverageJob . Open the file AverageJob.java. The Mapper, Combiner and Reducer classes are declared for you but the methods are empty. You will define the methods in this lab.
+1.3	Look in the run method of Average. How many files are going to be used as input for this MapReduce job? Answer: The input to this job is the counties folder, which has four files in it.Where is the output going to be sent? Answer: The output is going to be a folder named average.
+2	Analyze the Data
+2.1	The input of this MapReduce job is four CSV files in a subfolder of HDFS named counties. These files contain U.S. census data from the years 1980 - 2000 for all counties in the 50 states and the District of Columbia.
+2.2	In the Package Explorer window of Eclipse, right-click on the file counties_1.csv and select Open With -> Text Editor. The file should open in an Eclipse editor tab.
+2.3	Notice the first value in each row is a county name, followed by the state. The third value is a unique ID for the county. The remaining values represent median incomes from various years. For example, the 10th value in each row is the median household income for that county for the year 2000. This is the column you are going to compute the average of for each state.
+2.4	Leave the CSV file open so you can refer back to it as your write this application. Continue on to the next step.
+3	Define an Enumeration for Counters
+3.1	Add an enum to the AverageJob class that contains three values:
+public enum Counters {MAP, COMBINE, REDUCE}
+You will use these enumeration values as counters.
+4	Define the Mapper
+4.1	The map method of AverageMapper is going to get invoked for each county in the U.S. The line of text that is passed in is going to contain comma-separated values, so start by splitting the line of text into an array of String objects using a comma “,” as the delimiter.
+4.2	The second String in the array is the state, which is going to the key that your Mapper outputs. Use the trim method of the String class to remove any extra whitespace characters that are in the CSV file and wrap the result in a Text object.
+4.3	The tenth String in the array is the median income for the year 2000. Output this String as the value, wrapped in a Text object. The mapper should generate the following key/value pairs, with the income followed by a comma then the number 1. (The second number represents the number of counties in the state and will be incremented each time a county’s income is added to the total):
+SC40460,1
+LA40061,1
+VA 38656,1
+ID56721,1
+MO37262,1
+... and so on
+4.4	In the map method increment the counter named MAP, which you will use to keep track of the number of key/value pairs output by the mapper:
+context.getCounter(Counters.MAP).increment(1);
+5	Define the Combiner
+5.1	Notice the data coming in to the Combiner is going to look like the following:
+AL  ("49219,1","50903,1","39571,1",...)
+AK ("55914,1","41876,1","62232,1",...)
+AR("40978,1","42339,1","36186,1",...)
+... and so on
+5.2	Within the reduce method of AverageCombiner , declare two local variables:
+long sum = 0;
+int count = 0;
+5.3	Add a loop that iterates through the Iterable <Text> argument. Within the loop, split each Text string into two String objects (separated by a comma).
+5.4	Parse the first String into a long and add it to sum.
+5.5	Parse the second String into and int and add it to count.
+5.6	Notice that after the loop completes, sum will contain the summation of each value passed in, which is the sum of the median income of each county. Also, count will contain the number of values added together, which is the number of counties.
+5.7	After the loop, output the key (use the same key that was passed in, which is the state abbreviation). For the output value, declare and instantiate a field in AverageCombiner of type Text named outputValue, and set it to the sum and count values separated by a comma:
+outputValue.set(sum + "," + count);
+5.8	For each key/value pair output by the reduce method of AverageCombiner , increment the Counters.COMBINE counter.
+5.9	Save your changes.
+6	Define the Reducer
+6.1	In the reduce method of AverageReducer , initialize two local variables:double sum = 0; int count = 0;
+6.2	Write a loop that iterates through the Iterable <Text> argument. Keep in mind that the key/value pairs coming in to the reduce method look like:
+AL    ("26763,12","267630,14","267630,6","38310,12")
+where the first number of each pair is the sum of median incomes, and the second number is the number of counties.
+6.3	Within the loop, split each value into two strings using the split method and a comma "," as the delimiter. Add up the median incomes into sum, and add up the number of counties into count.
+6.4	After the loop, you have the information you need to compute the average median income for each state. The output key will be the state’s abbreviation, so exactly the same key that was passed in. Add a field to AverageReducer of type DoubleWritable for the output and set its value to be the average, and then write out the key/value pair.
+6.5	Increment the Counters.REDUCE counter after writing out the key/value pair.
+7	Run the Program
+7.1	The run and main methods of Average are ready to go, so save your changes to AverageJob.java.
+7.2	Build the JAR using Run As -> Gradle Build on the Average project.
+7.3	Run the application:
+# cd ~/java/workspace/Average/
+# yarn jar average.jar
+7.4	Notice in the output of your MapReduce job there is a “Counters” section that outputs all counters. You should see a group of counters in a section named “ average.AverageJob $Counters ” that shows the final values of your MAP, COMBINE and REDUCE counters.
+average.AverageJob$Counters
+COMBINE=198
+MAP=3146
+REDUCE=51
+7.5	View the output of the MapReduce job by opening the file part-r-00000 in the output folder in HDFS.
+# hadoop fs -cat output/part-r-00000
+You should see the average median income for 2000 for all 50 states and the District of Columbia:
+AK47621.379310344826
+AL41657.0447761194
+AR39212.613333333335
+AZ41795.8
+CA54987.10344827586
+CO46958.390625
+CT69629.625
+DC64401.0
+DE53605.333333333336
+FL45182.701492537315
+... and so on
+ 	Result: There are mathematical computations (like maximum value, summation, multiplication) that are associative and commutative, which typically means you can use the same Reducer class as the Combiner class. However, when computing something non-associative like the average of a group of numbers, then you need to write a Combiner that is different than the Reducer. In this lab, you wrote a Combiner that cleverly grouped the numbers and performed a partial computation of the average, while retaining the number of elements in the sum (so that the proper average could be computed by the Reducer).
