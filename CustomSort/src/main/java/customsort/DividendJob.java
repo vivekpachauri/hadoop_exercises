@@ -9,6 +9,7 @@ import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
@@ -16,6 +17,9 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.LazyOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -57,6 +61,13 @@ public class DividendJob extends Configured implements Tool {
 	public static class DividendGrowthReducer extends Reducer<Stock, DoubleWritable, NullWritable, DividendChange> {
 		private NullWritable outputKey = NullWritable.get();
 		private DividendChange outputValue = new DividendChange();
+		private MultipleOutputs<NullWritable, DividendChange> mos;
+		
+		@Override
+		protected void setup(org.apache.hadoop.mapreduce.Reducer<Stock,DoubleWritable,NullWritable,DividendChange>.Context context) 
+				throws IOException ,InterruptedException {
+			this.mos = new MultipleOutputs<NullWritable, DividendChange>(context);
+		};
 		
 		@Override
 		protected void reduce(Stock key, Iterable<DoubleWritable> values, Context context)
@@ -69,10 +80,27 @@ public class DividendJob extends Configured implements Tool {
 					outputValue.setSymbol(key.getSymbol());
 					outputValue.setDate(key.getDate());
 					outputValue.setChange(growth);
-					context.write(outputKey, outputValue);
+//					context.write(outputKey, outputValue);
+					if ( growth > 0 )
+					{
+						mos.write("positive", key, outputValue, "pos");
+					}
+					else
+					{
+						mos.write("negative", key,  outputValue, "neg");
+					}
 					previousDividend = currentDividend;
 				}
 			}
+		}
+		
+		@Override
+		protected void cleanup(
+				Reducer<Stock, DoubleWritable, NullWritable, DividendChange>.Context context)
+				throws IOException, InterruptedException {
+			// TODO Auto-generated method stub
+			super.cleanup(context);
+			mos.close();
 		}
 	}
 
@@ -93,12 +121,15 @@ public class DividendJob extends Configured implements Tool {
 		job.setGroupingComparatorClass(StockGroupComparator.class);
 		job.setInputFormatClass(TextInputFormat.class);
 // changing to DividendOutputFormat		job.setOutputFormatClass(TextOutputFormat.class);
-		job.setOutputFormatClass(DividendOutputFormat.class);
+//		job.setOutputFormatClass(DividendOutputFormat.class);
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(DividendChange.class);
 		job.setMapOutputKeyClass(Stock.class);
 		job.setMapOutputValueClass(DoubleWritable.class);
-				
+		MultipleOutputs.addNamedOutput(job, "positive", TextOutputFormat.class, NullWritable.class, DividendChange.class);
+		MultipleOutputs.addNamedOutput(job, "negative", TextOutputFormat.class, NullWritable.class, DividendChange.class);
+		LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
+		
 		job.setNumReduceTasks(3);
 
 		return job.waitForCompletion(true)?0:1;
