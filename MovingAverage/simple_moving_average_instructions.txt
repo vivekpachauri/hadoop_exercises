@@ -1,0 +1,62 @@
+
+Lab Steps
+1 	Locate the Project
+1.1 	If you completed Lab 5.1 successfully, then you can use your existing MovingAverage project in Eclipse to complete this lab. However, before you begin, copy-and-paste (or import) the MovingAverageJob.java and StockWindow.java files from your /root/java/labs/Lab5.3 folder into the average package folder, then skip to Step 2.
+1.2 	If you did not complete the lab Writing a Custom InputFormat successfully, then import into Eclipse the MovingAverage project found in the /root/java/labs/Solutions/Lab5.1 folder, then do Step 1.1.Run the movingaverage.jar job, using the command from the lab. Make sure you have a sequence file in the closingprices folder in HDFS.
+1.3 	Open the file MovingAverageJob.java. Notice the Reducer is stubbed out for you, a Partitioner is defined, and a Group Comparator is defined.
+1.4 	What is the Mapper for this job, and what does that Mapper do? Answer: The mapper is an instance of the org.apache.hadoop.mapreduce.Mapper class, which is known as the identity mapper. It reads in the key/value pairs and then simply outputs them.
+1.5 	How does StockPartitioner partition the records? Answer: Using the first letter of the stock symbol.
+1.6 	What do two records look like that end up in the same group during the shuffle phase? Answer: Stocks that have the same symbol are grouped together.
+1.7 	In this lab, you are going to compute the simple moving average of the stock prices using a class to represent a moving average window and writing the Reducer to compute the simple moving average. Continue to the next step.
+2 	Review the StockWindow Class
+2.1 	Open the StockWindow.java file in Eclipse.
+2.2 	Notice the StockWindow contains the stock’s symbol, the end date of the simple moving average window, and the closing prices within the specified window.
+2.3 	Notice the closing prices within this window are stored in a LinkedList.
+2.4 	Notice in the addPrice method that every time you add a price to the window, you hang on to the ending date of the window (the prices will be added in ascending order by date).
+2.5 	Notice the getAverage method computes the average of all the doubles in the LinkedList and returns it.
+3 	Write the Reducer
+3.1 	The MovingAverageReducer class is stubbed out for you in MovingAverageJob.java. Add the following field to the MovingAverageReducer class:
+
+    private LinkedList<StockWindow> windows =
+                            new LinkedList<StockWindow>();
+
+The LinkedList represents the collection of StockWindow objects that are currently being created. For example, if the window size is 50, then you need to store up to 50 StockWindow objects.
+3.2 	Add a for loop in the reduce method that iterates through the DoubleWritable values:
+
+    for(DoubleWritable value : values) {
+    }
+
+3.3 	Within the for loop, instantiate a new StockWindow. Use the key to get the stock’s symbol.
+3.4 	Add your new StockWindow to the windows field so that it is now part of the collection of windows.
+3.5 	Write a for loop that iterates through the windows field:
+
+    for(StockWindow w : windows) {
+    }
+
+3.6 	This for loop will contain one line of code: invoke addPrice on w. The price of the stock is in the value variable, and the date of the stock is in the key.
+3.7 	Within the enhanced for loop of values, check to see if the size of the linked list is greater than or equal to the WINDOW_SIZE field. If so, then the first StockWindow in windows is full and is ready to be output by the Reducer. Retrieve the first StockWindow object in windows (using the removeFirst method of LinkedList ).
+3.8 	Set the outputKey field to the toString result of the StockWindow you just removed from the LinkedList .
+3.9 	Set the ouputValue field to the getAverage result of the StockWindow.
+3.10 	Use the context parameter to write out the outputKey and outputValue fields.
+3.11 	After the enhanced for loop of values, use the clear method of LinkedList to empty the windows linked list.
+3.12 	Save your changes to MovingAverageJob.java.
+4 	Run the Job
+4.1 	Using Eclipse, open the file build.gradle in the MovingAverage project. Change the main class to average.MovingAverageJob:
+
+    project.ext.mainclass = 'average.MovingAverageJob' 
+
+4.2 	Save your changes to build.gradle , and then build the project to create movingaverage.jar.
+4.3 	Run MovingAverageJob with the following command:
+
+    # yarn jar movingaverage.jar 
+
+4.4 	When the job is complete, verify you have a new folder in HDFS named movingaverages that contains the output.
+
+    # hadoop fs -ls movingaverages
+
+4.5 	To view the result, -cat the output file:
+
+    # hadoop fs -cat movingaverages/part-r-00000
+
+You should see the simple moving averages of the stocks that were in the part-r-00000 input file.
+  	Result: This MapReduce job, in combination with the MovingAveragePreproccesor job, computes the simple moving average of stocks traded on the NYSE
