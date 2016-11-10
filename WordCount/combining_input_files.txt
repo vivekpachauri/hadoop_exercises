@@ -1,0 +1,27 @@
+Demo Steps
+1	Put the Small Files in HDFS
+1.1	Change directories to the demos folder:
+# cd ~/java/labs/demos/WordCount2
+Notice there are three small text files in this folder: the Constitution, the Bill of Rights, and the Declaration of Independence.
+1.2	Make a new folder in HDFS named smallfiles:
+# hadoop fs -mkdir smallfiles
+1.3	Put the three text files into the smallfiles folder in HDFS:
+# hadoop fs -put *.txt smallfiles
+2	Run WordCount
+2.1	From the WordCount2 folder, run the WordCount application on the smallfiles folder:
+# yarn jar wordcount1.jar smallfiles output1
+2.2	How many mappers did this MapReduce job use? _____________________ Answer: Three
+2.3	Make sure the output file was created successfully:
+# hadoop fs -ls output1
+Found 2 items
+-rw-r--r--   3 root root          0 output1/_SUCCESS
+-rw-r--r--   3 root root      22528 output1/part-r-00000
+3	View the Custom CombineFileInputFormat
+3.1	View the contents of WordCountJob.java in the demos folder (or you can import the WordCount2 project into Eclipse). What is the input format for this job? ________________________________ Answer: MyCombinedFilesInputFormat.class
+3.2	What is the maximum size of the input splits for this job? _______________ Answer: 50,000 bytes
+3.3	View the MyCombinedFilesInputFormat.java file. What is this input format using for its RecordReader? ______________________________ Answer: MyCombinedFilesRecordReader.class
+4	Run the Job Again
+4.1	The wordcount1.jar job that was previously executed used a TextInputFormat. The wordcount2.jar uses the MyCombinedFilesInputFormat. Run the job using this custom input format:
+# yarn jar wordcount2.jar smallfiles output2
+4.2	How many mappers were used and why? _____________________________ Answer: Two mappers, which means the input must have been more than 50,000 bytes but less than 100,000 bytes
+4.3	View the contents of output2 , and verify that the end result is the same. The main difference between wordcount1.jar and wordcount2.jar is the size of the input splits (and therefore the number of mappers).

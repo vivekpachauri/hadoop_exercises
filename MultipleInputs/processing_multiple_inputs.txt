@@ -1,0 +1,22 @@
+Demo Steps
+1	View the Data Files
+1.1	Change directories to the project folder:
+# cd ~/java/labs/demos/MultipleInputs/
+1.2	View the input files ids_states.txt and names_ids.txt. They are simple files; one is tab-delimited and one is comma-delimited.
+1.3	Put these files into HDFS:
+# hadoop fs -mkdir multiinputs
+# hadoop fs -put *.txt multiinputs
+2	View the MapReduce Job
+2.1	View the file MultiInputFiles.java, a custom class that demonstrates how to use the MultipleInputs class. (You can import the MultipleInputs project into Eclipse.)
+2.2	What are the input files for this job? ________________________________ Answer: names_ids.txt and ids_states.txt
+2.3	Which mapper will process names_ids.txt? ___________________________ Answer: NamesMapper
+2.4	Which mapper will process ids_states.txt? ____________________________Answer: StatesMapper
+2.5	Which reducer will process all records from both mappers? ______________________________________________ Answer: MultiInputReducer
+3	Run the Job
+3.1	From the command prompt, enter:
+# yarn jar multipleinput.jar
+3.2	How many map tasks did this job create? ______________ Answer: Two
+4	View the Output
+4.1	View the contents of the output file:
+# hadoop fs -cat multiinputs/output/part-r-00000
+Notice how the records from the two separate files with the same ID ended up getting combined during the shuffle/sort phase. How did that happen? Answer: The output from the two mappers was sent to the same reducer, so the records with common keys were combined. In this case, the common key was the ID of the records in the two text files.
