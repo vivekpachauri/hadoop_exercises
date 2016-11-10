@@ -1,0 +1,29 @@
+1 Understanding Block Storage
+2 Configuring a hadoop Development Environment
+3 PUtting Files in HDFS with Java
+4 Understanding MapReduce
+5 Word Count
+6 Distributed Grep
+7 Interver Index
+8 Using A Combiner
+9 Computering An Average
+10 Writing A Custom Partitioner
+11 Customizing Output
+12 Custom Sorting
+13 Combining Input Files
+14 Processing Multiple Inputs
+15 Writing A Custom InputFormat
+16 Simple Moving Average
+17 Using Data Compression
+18 Defining a RawComparator
+19 Performing a Map-Side Join
+20 Using a Bloom Filter
+21 Unit Testing a Map Reduce Job
+22 Importing Data into Hbase
+23 An HBase MapReduce Job
+24 Demo:Understanding Pig
+25 Writing a Pig User Defined Function
+26 Writing an Accumulator User Defined Function
+27 Writing a Hive User Defined Function
+28 Defining an Oozie Workflow
+29 Defining an Oozie Workflow

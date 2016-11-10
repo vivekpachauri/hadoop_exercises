@@ -1,0 +1,48 @@
+Lab Steps
+1	Locate the Project
+1.1	In Eclipse, expand the folder of the MRUnit project.
+2	Create the Source Folder
+2.1	Right-click on the project name and select New -> Source Folder.
+2.2	Add a new source folder named src /test/java.
+2.3	Copy the log4j.properties file found in the project folder into src /test/java.
+3	Add a Test Class
+3.1	Right-click on the src /test/java folder and select New -> Package.
+3.2	Add a new package named average (which conveniently matches the name of the package in your src /main/java folder).
+3.3	Add a class to your new package named AverageJobTest . It does not need to extend any class or implement any interfaces.
+4	Setup the Test
+4.1	You are writing a unit test for AverageJob. Open the AverageJob.java file. What generics does a MapDriver need to use in the test class to test AverageMapper? Answer: < LongWritable , Text, Text, Text>What generics does a ReduceDriver need to use to test AverageReducer? Answer: <Text, Text, Text, DoubleWritable >
+4.2	Add a MapDriver and ReduceDriver field to the AverageJobTest class, using the appropriate generics for each.
+4.3	Add a method named setup and annotate it with @Before.
+4.4	Within the setup method, initialize the MapDriver field using a new AverageMapper instance.
+4.5	Similarly, within setup initialize the ReduceDriver field using a new AverageReducer instance.
+5	Test the Mapper
+5.1	Add a method named testMapper to AverageJobTest and annotate it with @Test.
+5.2	Set the input of the test to the following line of text (which you can copy-and-paste from the first line of text in Lab4.1/counties/counties_1.csv):
+Abbeville, SC,45001,6581,7471,6787,195278,302280,29673, 40460,3042,3294
+which looks like the following code:
+LongWritable inputKey = new LongWritable(0);
+Text inputValue = new Text("Abbeville, SC,45001,6581,7471, 6787,195278,302280,29673,40460,3042,3294");
+mapDriver.withInput(inputKey, inputValue);
+5.3	Given the input above, the output of AverageMapper should be “SC” as the key and “40460,1” for the value. Create an output key and value to match this:
+Text outputKey = new Text("SC");
+Text outputValue = new Text("40460,1");
+5.4	Set the output of the test to your key and value:
+mapDriver.withOutput(outputKey, outputValue);
+5.5	Invoke the runTest method of MapDriver to run the test:
+mapDriver.runTest();
+5.6	Save your changes to AverageJobTest.java.
+6	Run the Test
+6.1	To verify your test, right-click on AverageJobTest.java and select Run As -> JUnit Test.
+6.2	The JUnit tab will appear in Eclipse, showing the results of the test. Verify your test ran successfully.
+7	Test the Reducer
+7.1	Add a method named testReducer to AverageJobTest and annotate it with @Test.
+7.2	Create a new Text object named inputKey that is the value “SC”.
+7.3	Instantiate a new ArrayList <Text> object named inputValues.
+7.4	Add two Text objects to inputValues that represent “122500,3” and “38100,1”.
+7.5	Use the setInput method of reduceDriver to set inputKey and inputValues as the input for this test.
+7.6	Configure the output of the test to be “SC” for the Text ouput key and 40150.0 as the DoubleWritable output value.
+7.7	Invoke the runTest method on reduceDriver to run the test.
+7.8	Save your changes to AverageJobTest.java.
+8	Run the Test Again
+8.1	Run AverageJobTest again as a JUnit Test and make sure your test passes.
+ 	Result: You have executed a unit test for a Mapper and a Reducer

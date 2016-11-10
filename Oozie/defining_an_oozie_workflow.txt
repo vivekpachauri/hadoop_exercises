@@ -1,0 +1,84 @@
+Lab Steps
+1	View the Project
+1.1	A project has been provided for you that contains a starting workflow.xml file. Locate the Oozie project in Eclipse.
+1.2	Open the StockDividendFilter.java file. This file contains a run method, even though it will not get invoked in the Oozie workflow. However, the information in the run method is extremely helpful in determining the content of workflow.xml, so leave this file open and refer to it often as you work through this lab.
+1.3	Open the file workflow.xml, found in the project’s root folder. The file is stubbed out for you, and you will fill in the missing pieces next.
+1.4	Open the file job.properties, found in the project’s root folder. Notice there are three properties defined
+2	Configure the build- blo omfilter Action
+2.1	Notice in workflow.xml that the properties for the build- bloomfilter action appear but some of the values are blank.
+2.2	Using the run method of StockDividendFilter as a guide, enter the missing values for the build- bloomfilter action. For long class names, copy-and-paste them from the StockDividendFilter.java file. Assume the input directory is the /user/root/bloom/dividends folder in HDFS (use the value of mapreduce.output.fileoutputformat.outputdir as an example of how to configure this property).
+3	Define the stockSymbol Property
+3.1	The original MapReduce application used a command-line argument to represent the stock symbol that the job output the closing prices for. In Oozie, you cannot specify command-line arguments - but you can define a property that becomes set in the job’s configuration object. Add the following property to the build- bloomfilter map-reduce configuration:
+<property>
+     <name>stockSymbol</name>
+     <value>${stockSymbol}</value>
+</property>
+3.2	In the job.properties file, define the stockSymbol property as “AIT” (or any other stock you want to search for that begins with an “A”):
+stockSymbol=AIT
+4	Define the Workflow
+4.1	After the </map-reduce> element but within the build- bloomfilter <action>, add an <ok> element. If the job finishes successfully, have the filter-stocks actions execute.
+4.2	After the <ok> element add an <error> element. If the build- bloomfilter action fails, have the kill action named fail execute
+4.3	Save your changes to workflow.xml.
+5	Configure the Application Directory
+5.1	Add the following property to jobs.properties, which defines where the Oozie application is deployed in HDFS:
+oozie.wf.application.path=hdfs://node:8020/user/root/bloom
+5.2	Save your changes to job.properties.
+6	Define the OOZIE_URL Environment Variable
+6.1	Although not required, you can simplify oozie commands by defining the OOZIE_URL environment variable. From a terminal window, enter the following command:
+# export OOZIE_URL=http://hiveserver:11000/oozie
+7	Validate the Workflow
+7.1	Oozie provides a validation tool to verify that the workflow.xml file is well-formed and valid. Enter the following command to validate your workflow:
+# cd ~/java/workspace/Oozie
+# oozie validate workflow.xml
+7.2	Fix any errors until you get the following response:
+Valid workflow-app
+8	Upload the Application into HDFS
+8.1	You are going to upload this Oozie workflow into HDFS into a new folder named bloom. Any JAR files of an Oozie workflow need to go in a directory named lib, so make a new directory in HDFS:
+# hadoop fs -mkdir bloom
+# hadoop fs -mkdir bloom/lib
+8.2	Build to project to create oozie.jar.
+8.3	Put oozie.jar into the bloom/lib folder:
+# hadoop fs -put oozie.jar bloom/lib/
+8.4	Put workflow.xml into the bloom folder:
+# hadoop fs -put workflow.xml bloom/
+8.5	The input files for the two MapReduce jobs also need to be put into the appropriate folders in HDFS. The dividends file goes in bloom/dividends:
+# hadoop fs -mkdir bloom/dividends
+# hadoop fs -put ~/java/labs/data/stock_dividends/NYSE_dividends_A.csv bloom/dividends
+8.6	Put the stock prices in bloom/stocks:
+# hadoop fs -mkdir bloom/stocks
+# hadoop fs -put ~/java/labs/data/stock_prices/NYSE_daily_prices_A.csv bloom/stocks
+8.7	Verify all the files were uploaded successfully:
+# hadoop fs -ls -R bloom
+The output should look like the following:
+drwxr-xr-x   - root root          0 bloom/dividends
+-rw-r--r--   3 root root     224232 bloom/dividends/NYSE_dividends_A.csv
+drwxr-xr-x   - root root          0 bloom/lib
+-rw-r--r--   3 root root       9922 bloom/lib/oozie.jar
+drwxr-xr-x   - root root          0 bloom/stocks
+-rw-r--r--   3 root root   40990862 bloom/stocks/NYSE_daily_prices_A.csv
+-rw-r--r--   3 root root       4541 bloom/workflow.xml
+9	Run the Workflow
+9.1	Now that the Oozie workflow is in HDFS and in the proper structure, you are ready to run the workflow. Enter the following command:
+# oozie job -config job.properties -run
+If the job started successfully, you will see a job id output. If the job failed to start, fix any errors and try again.
+10	View the Progress
+10.1	Point your web browser to http://hiveserver :11000 /oozie.
+10.2	You should see the Oozie Web Console and your Oozie job at the top of the list in the Job Id column. Notice there is a Status column, which should say RUNNING for your Oozie job:
+
+10.3	Click on the job id in the Job Id column to display details about the job.
+10.4	Notice the Job Info tab shows the status, and at the bottom shows the Actions that are currently executing:
+
+10.5	To view the Oozie log file for this job, click on the Job Log tab.
+10.6	To view the MapReduce log files, double click on the Action Id of a MapReduce job in the Actions section. The pop-up window shows details about the Action, as well as the error message (if any) and a quick link to the job’s detail page (click the icon to the right of the Console URL field).
+10.7	Verify your job executed successfully. If you got an error (which is certainly possible after all the steps you just performed), look through the various log files in the Oozie Web Console to see if you can determine what the error is.
+11	Verify the Result
+11.1	Once the Oozie workflow executes successfully, verify the result by looking in the bloom folder in HDFS:
+# hadoop fs -ls -R bloom
+11.2	Verify you have a file named bloom/ dividendfilter , which contains the serialized BloomFilt er object. This file was created by the first MapReduce job in the workflow.
+11.3	Verify you have a folder named bloom/ bloomoutput that contains a part-r-00000 file, which is the output of the second MapReduce job.
+11.4	View the contents of part-r-0000 and verify it contains closing prices of the stock you searched for on the dates that the stock announced a dividend.
+AIT,2009-02-1117.23
+AIT,2009-05-1319.75
+AIT,2009-08-1222.18
+AIT,2009-11-1220.65
+ 	Result: In this lab, you wrote an Oozie workflow for two MapReduce jobs. It may have seemed liked redundant work because you already ran the program on its own using the run method, but keep in mind that the run method does not need to be written for an Oozie workflow, so in practice we could have skipped that step. In a sense, the <action> element contains the contents of run, but allows you to configure the job outside of the Java source code.

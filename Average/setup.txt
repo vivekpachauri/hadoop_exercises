@@ -1,0 +1,85 @@
+Lab Steps
+1	Start the VM
+1.1	You should have HWX_Java in the list of virtual machines in VMWare Player/Fusion. Select it then click the Play button in the toolbar to start it.
+1.2	Once the VM starts, login as root. The password is hadoop.
+2	Start Eclipse
+2.1	Open the Files application using the shortcut on the left-hand toolbar:
+ 	
+
+2.2	In the eclipse folder, double-click on the eclipse shortcut:  
+2.3	Make sure the workspace folder is /root/java/workspace:
+
+3	Create a New Eclipse Project
+3.1	Open a Terminal window in your VM by clicking on the Terminal shortcut on the left-hand toolbar, or by using the Ctrl+Alt+T keyboard shortcut.
+3.2	From the Terminal window, change directories to /root/java/workspace:
+# cd ~/java/workspace/
+3.3	You are going to create a project named WordCount. Start by making a new subdirectory of workspace named WordCount:
+# mkdir WordCount
+3.4	Copy the provided build.gradle file in the Lab1.1 folder into the WordCount folder:
+# cd WordCount
+# cp ~/java/labs/Lab1.1/build.gradle
+3.5	View the contents of build.gradle using the more command:
+# more build.gradle
+project.ext.mainclass = 'wordcount.WordCountJob'
+project.ext.archiveName = 'wordcount.jar'
+apply from: '/root/java/labs/build.gradle'
+Notice it defines the name of the JAR file and the main class within that JAR file. The other settings are inherited from the build.gradle file in the /root/java/labs folder.
+4	Import the Project into Eclipse
+4.1	From the Eclipse menu, select File -> Import….
+4.2	Expand the Gradle folder and select Gradle Project:  
+4.3	Click the Next button.
+4.4	Click the Browse… button next to the “Root folder:” textbox and select your /root/java/workspace/WordCount folder:
+
+4.5	Click the Build Model button next to the Browse... button. This will cause WordCount to appear in the list of available projects.
+4.6	Check the box next to WordCount:
+
+4.7	Click the Finish button. Wait for the project to be imported into Eclipse.
+4.8	You should now see WordCount as a Gradle project in Eclipse in the Project Explorer window. Your Eclipse is project is ready to go. It will be used in other labs to develop MapReduce applications.
+5	Start the HDP Cluster
+5.1	From the Terminal window, run the following command (which should be in your PATH, so you can run the command from any directory):
+# java_cluster.sh
+5.2	Wait for the script to complete. This script is starting up 7 nodes (using Docker) that create an HDP cluster. Three of the nodes are master nodes named namenode, resourcemanager, and hiveserver. The other 4 nodes are worker nodes named node1, node2, node3 and node4 and have the DataNode and NodeManager processes running on them.
+5.3	Run the following command:
+# hdfs dfsadmin -report
+Scroll up through the output of the report and verify the number of available DataNodes is 4.
+5.4	Enter the following command:
+# yarn node -list
+Verify you have 4 NodeManagers in your cluster.
+6	Define a Directory in HDFS
+6.1	View the contents of /user/root in HDFS:
+# hadoop fs -ls
+There will be no output because the folder is empty.
+6.2	View the contents of the / folder in HDFS:
+# hadoop fs -ls /
+You should see six subfolders:
+# hadoop fs -ls /
+Found 6 items
+drwxrwxrwt   - yarn   hdfs          0 /app-logs
+drwxr-xr-x   - hdfs   hdfs          0 /apps
+drwxr-xr-x   - mapred hdfs          0 /mapred
+drwxr-xr-x   - mapred hdfs          0 /mr-history
+drwxrwxrwx   - hdfs   hdfs          0 /tmp
+drwxr-xr-x   - hdfs   hdfs          0 /user
+6.3	Enter the following command, which recursively lists the contents of the user folder in HDFS:
+# hadoop fs -ls -R /user
+You should see a lot of files listed, mostly in the /user/oozie folder.
+6.4	Define a new directory named /user/root/dividends in HDFS:
+# hadoop fs -mkdir dividends
+6.5	Verify the directory was created successfully:
+# hadoop fs -ls
+Found 1 items
+drwxr-xr-x   - root root   0 dividends
+7	Put Files into HDFS
+7.1	In this step, you will upload into HDFS a group of files that contain dividend information from stocks traded on the New York Stock Exchange (NYSE). The files are currently on your local filesystem in ~/java/labs/data/stock_dividends:
+# cd ~/java/labs/data/stock_dividends/
+# ls -la
+  You should see three NYSE_dividends_*.csv files.
+7.2	Enter the following command to put these files into the /user/root/dividends folder in HDFS:
+# hadoop fs -put * dividends/
+7.3	Use the -ls command to verify the files are in HDFS:
+# hadoop fs -ls dividends
+Found 3 items
+-rw-r--r-- root root 224232 dividends/NYSE_dividends_A.csv
+-rw-r--r-- root root 229944 dividends/NYSE_dividends_B.csv
+-rw-r--r-- root root 255157 dividends/NYSE_dividends_C.csv
+ 	Result: You have Gradle and Eclipse installed on your machine, and you now have a project in Eclipse that is configured and ready for developing MapReduce applications for Hadoop. In the next Unit, you will write several MapReduce applications using the WordCount project and run the applications on your Hadoop cluster.

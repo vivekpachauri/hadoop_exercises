@@ -1,0 +1,94 @@
+Lab Steps
+1.	
+Store the Job Data in HDFS
+1.	
+Make sure you have whitehouse/visits.txt in HDFS:
+
+root@ubuntu:~# hadoop fs -ls whitehouse
+
+If not, the file can be found in the Getting Started with Pig lab folder. The Oozie job assumes there is a file named visits.txt in a folder named whitehouse in HDFS.
+2.	
+Deploy the Oozie Workflow
+1.	
+Using the gedit text editor, open the file /root/devph/labs/Oozie/workflow.xml.
+2.	
+How many actions are in this workflow? _____________
+
+Answer: Two
+3.	
+Which action will execute first? _________________
+
+Answer: The Pig action named export_congress
+4.	
+If the first action is successful, which action will execute next? ____________
+
+Answer: The Hive action named define_congress_table
+5.	
+To deploy this workflow, we need a directory in HDFS:
+
+root@ubuntu:~# cd ~/devph/labs/Oozie/
+root@ubuntu:~/devph/labs/Oozie# hadoop fs -mkdir congress
+6.	
+Pull congress_visits.hive and whitehouse.pig from the Oozie folder into the new congress folder in HDFS.
+7.	
+Also, put workflow.xml into the congress folder.
+8.	
+Verify that you have three files now in your congress folder in HDFS:
+
+root@ubuntu:~/devph/labs/Oozie# hadoop fs -ls congress
+Found 3 items
+-rw-r--r-- 3 root root 429 congress/congress_visits.hive
+-rw-r--r-- 3 root root 580 congress/whitehouse.pig
+-rw-r--r-- 3 root root 1692 congress/workflow.xml
+3.	
+Deploy the Hive Configuration File
+1.	
+If you look at the Hive action in workflow.xml, you will notice that it references a file named hive-site.xml within the <job-xml> tag. This file represents the settings Oozie needs to connect to your Hive instance, and the file needs to be deployed in HDFS (using a relative path to the workflow directory). Put hive-site.xml into the workflow directory:
+
+# hadoop fs -put /etc/hive/conf/hive-site.xml congress
+4.	
+Define the OOZIE_URL Environment Variable
+1.	
+Although not required, you can simplify oozie commands by defining the OOZIE_URL environment variable. From the command line, enter the following command:
+
+# export OOZIE_URL=http://hiveserver:11000/oozie
+5.	
+Run the Workflow
+1.	
+Run the workflow with the following command from the /root/devph/labs/Oozie directory:
+
+# oozie job -config job.properties –run
+
+If successful, the job ID should be displayed at the command prompt.
+6.	
+Monitor the Workflow
+1.	
+Point your Web browser to the Oozie Web Console:
+
+http://hiveserver:11000/oozie/
+
+You should see your Oozie job in the list of workflow jobs:
+ 
+2.	
+Double-click on the Job ID to the Job Info page:
+ 
+3.	
+Notice that you can view the status of each Action within the workflow.
+7.	
+Verify the Results
+1.	
+Once the Oozie job is completed successfully, start the Hive Shell.
+2.	
+Run a select statement on congress_visits and verify that the table is populated:
+
+hive> select * from congress_visits;
+...
+WATERSMAXINE12/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+WATTMEL12/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+WEGNERDAVIDL12/8/2010 16:4612/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+WILLOUGHBYJEANNEP12/8/2010 17:0712/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+WILSONROLLIEE12/8/2010 16:4912/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+YOUNGDON12/8/2010 17:00POTUSOEOBMEMBERS OF CONGRESS AND CONGRESSIONAL STAFF
+MCCONNELLMITCH12/14/2010 9:00POTUSWHMEMBER OF CONGRESS MEETING WITH POTUS.
+Time taken: 1.082 seconds, Fetched: 102 row(s)
+Result: You have just executed an Oozie workflow that consists of a Pig script followed by a Hive script.

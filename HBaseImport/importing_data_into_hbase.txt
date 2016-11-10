@@ -1,0 +1,61 @@
+Lab Steps
+1	Import the Project
+1.1	Expand the folder of the HBaseImport project in Eclipse.
+1.2	Open the file StockImporter.java. Notice it is a MapReduce job that only defines a Mapper, and part of the map method is written for you. You will finish writing this job, which will read in the data from NYSE_daily_prices_A.csv and put it into an HBase table named ‘stocks’.
+2	Create an HBase Table
+2.1	Start the HBase shell:
+# hbase shell
+2.2	Define a new HBase table named ‘stocks’ that has a column family named ‘p’:
+hbase (main):001:0> create 'stocks', {NAME => 'p', VERSIONS => 1}
+2.3	Verify the table was created successfully:
+hbase (main):002:0> list
+You should see the ‘stocks’ table in the list.
+2.4	You can also view the details of the ‘stocks’ table using the describe command:
+hbase (main):003:0> describe 'stocks'
+3	Define HBase Constants
+3.1	HBase uses String objects (converted to an array of bytes) as the names for the column families and column qualifiers. You are going to define these constants in a class so you can refer to them consistently and conveniently. Start by adding a new class named StockConstants to the hbase package of the HBaseImport project.
+3.2	Within StockConstants, add a static final array of bytes to represent the name of the column family:
+public static final byte [] PRICE_COLUMN_FAMILY =
+                                       "p".getBytes();
+3.3	Similarly, add the following fields to StockConstants to represent four different qualifiers that will be used in the column family:
+public static final byte [] HIGH_QUALIFIER =
+                                "high".getBytes();
+public static final byte [] LOW_QUALIFIER =
+                                "low".getBytes();
+public static final byte [] CLOSING_QUALIFIER =
+                                "close".getBytes();
+public static final byte [] VOLUME_QUALIFIER =
+                                "vol".getBytes();
+3.4	Save your changes to StockConstants.java.
+4	Define the Mapper
+4.1	Add the following static import to StockImporter.java:
+import static hbase.StockConstants.*;
+4.2	Notice in the map method of StockImporterMapper that the incoming line of text has been parsed for you into the stock symbol, date, the various prices, and volume for that day.
+4.3	After the values are parsed, define a variable named stockRowKey that is a combination of the stock symbol and the date:
+byte [] stockRowKey =
+            Bytes.add(date.getBytes(), symbol.getBytes());
+4.4	Use stockRowKey to instantiate a new Put object.
+4.5	Use the add method of Put to add highPrice, lowPrice , closingPrice and volume to the Put object, using the respective constants from StockConstants for the column family and column qualifiers.
+4.6	Write the Put object as the output of the mapper:
+context.write(null, put);
+5	Configure the HBase Table
+5.1	Within the run method, add the following call to initTableReducerJob . The null argument specifies this job does not have a reducer:TableMapReduceUtil.initTableReducerJob("stocks", null, job);
+5.2	Save your changes to StockImporter.java.
+6	Run the StockImporter Job
+6.1	Build the project to create hbaseimport.jar.
+6.2	Make a new directory in HDFS named stocksA:
+# hadoop fs -mkdir stocksA
+6.3	Put the “A” stocks into the stocksA folder:
+# cd ~/java/workspace/HBaseImport/
+# hadoop fs -put stocksA/* stocksA/
+6.4	Add the HBase JAR files to the HADOOP_CLASSPATH:
+# export HADOOP_CLASSPATH=`hbase classpath`
+6.5	Run the StockImporter job:
+# yarn jar hbaseimport.jar
+7	Verify the Data in HBase
+7.1	The StockImporter job does not output any data. To verify it worked, you need to view the contents of the ‘stocks’ table in HBase. At the HBase shell prompt, enter the following command (which displays 100 rows of the table):
+hbase (main):001:0> scan 'stocks', {LIMIT => 100}
+7.2	Notice the output of the previous scan command showed the values of your table as hexadecimal strings. You can apply a formatter to the output to convert the strings to numeric types. For example, try running the following command:
+hbase (main):002:0> scan 'stocks', {COLUMNS=>['p:high:toDouble', 'p:low:toDouble', 'p:close:toDouble', 'p:vol:toInt'], LIMIT=>100}
+This time, the output should show the stock’s prices as numbers.
+ 	Result: You now have put the stock prices from NYSE_daily_prices_A.csv into a new table in HBase named ‘stocks’ in a column family named ‘p’. In the lab An HBase MapReduce Job, you will write a MapReduce job that uses the ‘stocks’ table as the input to the job.

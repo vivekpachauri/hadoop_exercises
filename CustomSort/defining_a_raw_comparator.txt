@@ -1,0 +1,40 @@
+Lab Steps
+1	Import the Project
+1.1	If you successfully completed the CustomSort application from the labs Custom Sorting or Customizing Output, then use that project for this lab. Continue at Step 2.
+1.2	If you did not complete either lab, then import into Eclipse the CustomSort project from /root/java/labs/Solutions/Lab5.2.
+2	Create the StockComparator Class
+2.1	Add a new class to the customsort package named StockComparator that extends the WritableComparator class.
+2.2	Add a no-argument constructor that passes Stock.class to the parent class constructor.
+3	Implement the compare Method
+3.1	Add the following method to StockComparator (which overrides a parent method):
+public int compare(byte[] b1, int s1, int l1, byte[] b2, int s2, int l2)
+3.2	Open Stock.java. In the write method, notice the stock symbol is written first as a UTF string, followed by the date as a UTF string
+3.3	Go back to the StockComparator class. The first step in comparing two Stock objects is to determine if the stock symbols are equal. To compare the two strings, you need to compute their length first, which is conveniently stored as part of a UTF string as a short prefixed to the string. Declare two int variables named strLength1 and strLength2 and initialize them as follows:
+int strLength1 = readUnsignedShort(b1,s1);
+int strLength2 = readUnsignedShort(b2,s2);
+3.4	Compare the two stock symbols using the compareBytes method. Notice the “+ 2” is an offset because of the short at the beginning of each string:
+int response = compareBytes(b1, s1 + 2, strLength1,
+                            b2, s2 + 2, strLength2);
+3.5	If response is not 0, then simply return it. The two stock symbols are not the same, so there is no reason to compare the dates.
+3.6	If response is 0, then you need to compare the date fields of the two Stock objects. We know the length of every date is 10 (the dates look like yyyy -mm- dd ), and we also know the offset is the length of the stock symbol plus two shorts:
+response = compareBytes(b1, s1 + 2 + strLength1 + 2, 10,
+                        b2, s2 + 2 + strLength2 + 2, 10);
+Obviously we could have simply added 4 to s1 + strLength1, but a point is being emphasized that the offset contains two separate shorts.
+3.7	Return response.
+3.8	Save your changes to StockComparator.java.
+4	Configure the Comparator
+4.1	A RawComparator needs to be registered using the static define method of WritableComparator, and this only needs to occur once within the application. This is typically accomplished in a static initializer. Open Stock.java.
+4.2	Add the following static initializer:
+static {
+   WritableComparator.define(Stock.class,
+   new StockComparator());
+}
+4.3	Save your changes to Stock.java
+5	Run DividendJob
+5.1	Build the project to create dividendgrowth.jar.
+5.2	Run the job:
+# yarn jar dividendgrowth.jar
+5.3	Watch the output in the console and make sure the job runs successfully. If you get a heap memory error, you likely have an error in the compare method of StockComparator .
+5.4	Check the growth folder in the project and verify the output files were generated successfully:
+# hadoop fs -ls growth
+ 	Result: The output of DividendJob should be the same as before. You now have written a RawComparator for comparing keys without having them deserialized, which can greatly improve the performance of a large MapReduce job.

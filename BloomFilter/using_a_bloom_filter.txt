@@ -1,0 +1,98 @@
+About this lab
+Objective:	Create a Bloom Filter, then apply the filter during the mapping of a MapReduce job.
+Location of files:	/root/java/labs/Lab7.2
+Successful outcome:	A stock’s closing prices only on the dates that a dividend price was announced for that stock.
+Before you begin:	Open Eclipse if you do not have it running.
+Source lesson:	Advanced MapReduce Features
+Lab Steps
+1	Understand the Job
+1.1	In Eclipse, expand the BloomFilter project. It will have compiler errors.
+1.2	Open the file StockDividendFilter.java and look at its run method. Notice this application consists of two MapReduce jobs: the first job will create the Bloom filter and save it in a file named filters/dividendfilter. The second job inputs the stock prices along with their corresponding dividend prices, and outputs only those stock prices that have a dividend granted on the same date (which is about once every three months for most stocks).
+1.3	Notice the BloomMapper and BloomReducer classes are stubbed out for you and will represent the first MapReduce job that creates the Bloom filter file.
+1.4	Notice the StockFilterMapper class is stubbed out and will represent the job that applies the filter to the stock prices
+1.5	Notice DividendMapper has been written for you. It reads in the dividend data and outputs StockTaggedKey keys with the tag set to DIVIDENDS. This way the reducer will know if an incoming key is a STOCKS price or a DIVIDENDS price.
+1.6	Notice the StockFilterReducer is already written for you. It checks for false positives by verifying that the tag of the incoming key is DIVIDENDS. If it’s not DIVIDENDS, then an unwanted stock price has slipped through our Bloom filter (making it a false positive).
+2	Define the BloomMapper
+2.1	Start by adding a field of type BloomFilter to the BloomMapper class:
+private BloomFilter outputValue;
+2.2	In the setup method of BloomMapper, initialize the outputValue field with a new BloomFilter that has a vector size of 1,000, uses 20 for the number of hash functions to consider, and uses the Murmur hash (declared in Hash.MURMUR_HASH).
+2.3	The map method is written for you already. Notice that if the incoming stock symbol equals the stockSymbol field, then this stock needs to go into the Bloom filter. This is accomplished by adding a new Key object to the Bloom filter. That’s it for the map method. There are no key/value pairs to output yet.
+2.4	In the cleanup method of BloomMapper, output a single key/value pair that contains the Bloom filter as the value (notice the outputKey is a NullWritable instance):
+context.write(outputKey, outputValue);
+3	Define the BloomReducer
+3.1	 Add a BloomFilter field to BloomReducer named allValues:
+private BloomFilter allValues;
+3.2	Initialize allValues in the setup method of BloomReducer. Use 1,000 for the vector size, 20 for the number of hash functions, and Hash.MURMUR_HASH as the hash function.
+3.3	The values coming in to the reduce method are BloomFilter instances. The BloomReducer needs to combine all of these BloomFilter instances into a single BloomFilter (i.e. the allValues field). Use the or method to combine each incoming BloomFilter with the allValues field:
+for(BloomFilter filter : values) {
+     allValues.or(filter);
+}
+3.4	In the cleanup method, you need to output the BloomFilter to a file. To do this, start by creating the output file:
+Configuration conf = context.getConfiguration();
+Path path = new Path(FILTER_FILE);
+FSDataOutputStream out =
+                    path.getFileSystem(conf).create(path);
+3.5	Next, use the write method of BloomFilter to serialize the entire contents of allValues to the file.
+3.6	Close the output stream.
+3.7	Save your changes - the BloomReducer class is now ready to go.
+4	Test the Bloom Filter Job
+4.1	Even though you are only halfway through the lab, you can test the first MapReduce job now. Build the project to create bloomfilter.jar
+4.2	Put the dividends for the “B” stocks into HDFS:
+# cd ~/java/labs/data/stock_dividends
+# hadoop fs -put NYSE_dividends_B.csv dividends/
+4.3	Run the job (be sure to include a stock symbol as the first command-line argument). For example:
+# cd ~/java/workspace/BloomFilter/
+# yarn jar bloomfilter.jar BLU
+4.4	You should see a new folder in HDFS named filters that contains a file named dividendfilter. 
+# hadoop fs -ls filters
+Found 1 items
+-rw-r--r--   3 root root       1263 filters/dividendfilter
+This is the Bloom filter output from the cleanup method of BloomReducer.
+5	Deserialize the Bloom Filter
+5.1	Notice that the setup method of StockFilterMapper has been started for you: the Bloom filter file has been retrieved from HDFS, and the stockSymbol field has been initialized.
+5.2	Initialize the dividends field to a new BloomFilter with size 1,000 with 20 hash functions and the Hash.MURMUR_HASH function.
+5.3	Open filter_file for input:
+FileSystem fs = FileSystem.get(context.getConfiguration());
+FSDataInputStream in = fs.open(filter_file);
+5.4	Use the readFields method of the dividends object to deserialize the contents of the file and input them into dividends.
+5.5	Close the input stream
+6	Apply the Bloom Filter to the Stocks
+6.1	The map method of StockFilterMapper is only partially completed for you. Note the incoming data looks like:
+NYSE,BGY,2010-02-08,10.25,10.39,9.94,10.28,600900,10.28
+This line of text is split into an array of String objects.
+6.2	If the stock symbol of the input data is equal to the stockSymbol field, then you need to check if this particular item appears in the Bloom filter. You need a prg.apache.hadoop.util.bloom.Key to test this, so one is instantiated for you that contains the incoming symbol and date.
+6.3	Use the membershipTest method of BloomFilter to see if stockKey is in dividends.
+6.4	If stockKey is a member of dividends, then a match has been found and we want to output the closing price of this stock. Write out a key/value pair with the Stock object as the key, and the value as a new StockTaggedKey with the tag set to STOCKS (The closing price is at index 6 in your array of String objects). The code will look like:
+outputValue.set(Double.parseDouble(words[6]));
+context.write(
+  new StockTaggedKey(JoinData.STOCKS.ordinal(), outputKey),
+  outputValue);
+6.5	If the Stock object is not in dividends, then do not output anything.
+6.6	Save your changes to StockDividendFilter.java.
+7	Run the Program
+7.1	Build the project again to update bloomfilter.jar.
+7.2	Put the stocks that start with a “B” in the stocks folder of HDFS:
+# cd ~/java/workspace/BloomFilter/
+# hadoop fs -put stocks/NYSE_daily_prices_B.csv stocks
+7.3	Run the job again using BLU as the stock symbol (BLU just happens to have dividend values split across two input files):
+# yarn jar bloomfilter.jar BLU
+7.4	You should see a new folder in HDFS named bloomoutput:
+# hadoop fs -ls bloomoutput
+7.5	View the output file part-r-00000. The tail of the file should look like:
+BLU,2007-12-275.21
+BLU,2008-04-094.76
+BLU,2008-07-094.3
+BLU,2008-10-082.65
+BLU,2008-12-242.19
+BLU,2009-04-072.22
+8	Check the Log
+8.1	The reducer logs an entry each time a false positive occurs. To view the log files for this application, you need to locate its application ID. Enter the following command:
+# yarn application -list -appStates FINISHED
+8.2	Locate the job named “FilterStockJob", then highlight, select and copy its application ID.
+8.3	Use the yarn logs command view the aggregated logs for the application. The command will look like:
+# yarn logs -applicationId appId
+Replace the application ID shown above with your actual application’s ID number.
+8.4	An easy way to search for the false positives in the log file is to grep for “False” in the log output:
+# yarn logs -applicationId appId | grep False
+You should see quite a few false positives. Notice that there is a false positives counter, BloomCounters.FALSE_POSITIVES, that is used in StockFilterReducer.If you want to see a lot more, change the Bloom filter size 1,000 to 500. If you want to see fewer, change the Bloom filter size to 10,000.
+ 	Result: You have just written a MapReduce application that uses a Bloom filter to minimize the amount of data output from the Mapper. You could have performed this task using a single MapReduce job, but without a filter you would have to store a lot of data in memory in the Mapper, or pass a lot more information across the network and have the Reducer filter the output.

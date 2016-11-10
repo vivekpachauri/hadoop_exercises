@@ -1,0 +1,47 @@
+Lab Steps
+1	Deploy the Log Files
+1.1	The data for this job is in your /root/java/labs/Lab6.1 folder on the VM. As the root user, put these files into HDFS in a folder named logfiles:
+# cd ~/java/labs/Lab6.1/logs
+# hadoop fs -mkdir logfiles
+# hadoop fs -put * logfiles
+1.2	Verify you have 2 log files in the logfiles folder in HDFS:
+# hadoop fs -ls logfiles
+2	Understand the Job
+2.1	Expand the folder of the Compression project in Eclipse
+2.2	Open the file CompressDemoJob.java in the compress package.
+2.3	Notice CompressMapper receives data via a TextInputFormat. If a row of data from the log files contains the specified search string, then the Mapper outputs the entire row. The key is the date and log level, which allows for the log events that occurred on the same day to get combined during the shuffle and sort phase.
+2.4	Notice the CompressReducer simply outputs the entire row of text using TextOutputFormat .
+2.5	Also notice that in the run method that there is no compression configured for this particular MapReduce job. In the following steps you are going to run this job twice, once without compression, and once with compression. Continue on to the next step.
+3	Run the Application without Compression
+3.1	Build the Compression project to create compression.jar.
+3.2	Run the job, searching for the string “INFO” (which occurs frequently in these log files):
+# yarn jar compression.jar INFO
+3.3	When the job completes, write down the value of the Bytes Written counter in the File Output Format Counters section: Answer: 71,275
+3.4	Write down the value of the Map output materialized bytes counter in the Map-Reduce Framework section: Answer: 81,915
+3.5	Write down the value of the Reduce shuffle bytes counter in the Map-Reduce Framework section: Answer: 81,915
+3.6	Verify the job worked properly by viewing the result file in logresults:
+# hadoop fs -ls logresults
+# hadoop fs -cat logresults/part-r-00000
+The result file should only have log events that contain the string “INFO”.
+4	Configure Compression
+4.1	In the run method of CompressDemoJob, configure the output of the Mapper to use SnappyCodec compression.
+4.2	Similarly, configure the output of the Reducer to also use SnappyCodec compression.
+4.3	Save your changes to CompressDemoJob.java.
+5	Run the Application with Compression
+5.1	Rebuild the project to update compression.jar.
+5.2	Rerun the job, using “INFO” as the search string again:
+# yarn jar compression.jar INFO
+5.3	Write down the Bytes Written counter in the File Output Format Counters section: Answer: 13,766
+5.4	Notice the number of bytes output with compression is only 20% of the data that was written without compression, a substantial savings in disk space.
+5.5	Write down the value of the Map output materialized bytes counter in the Map-Reduce Framework section: Answer: 14,985
+5.6	Write down the value of the Reduce shuffle bytes counter in the Map-Reduce Framework section: Answer: 14,985
+6	View the Results
+6.1	View the contents of logresults in HDFS. Notice the results file has a .snappy extension in HDFS:
+# hadoop fs -ls logresults
+Found 2 items
+-rw-r--r--   3 root root        0 logresults/_SUCCESS
+-rw-r--r--   3 root root    13776 logresults/part-r-00000.snappy
+6.2	The .snappy file is in a binary format, so to view its contents you need to use the hadoop fs -text command:
+# hadoop fs -text logresults/part-r-00000.snappy
+Notice all of the error messages in this file are at the INFO level.
+ 	Result: You have seen how to generate compressed results files using the Snappy codec. There are other compression algorithms available in Hadoop, and you can also use third-party ones like LZO.

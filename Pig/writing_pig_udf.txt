@@ -1,0 +1,55 @@
+Lab Steps
+1	Define an EvalFunc Class
+1.1	In Eclipse, expand the folder for the Pig project.
+1.2	Add a new package to src /main/java named stockudfs.
+1.3	Add a new class to the stockudfs package named OnBalanceVolume that extends the EvalFunc class.
+1.4	Change the generic of OnBalanceVolume to Long.
+1.5	Add two fields to OnBalanceVolume:
+private long previousObv;
+private double previousClose;
+1.6	Add the exec method:
+@Override
+public Long exec(Tuple input) throws IOException {
+}
+1.7	Save the input parameters into local variables by parsing the first parameter to a long (which is the volume) and the second parameter to a double (which is the stock’s closing price).
+1.8	1.8. Have the exec method return the On-Balance Volume (OBV) of the stock, which is computed from the following formula:
+1.OBV = previous OBV + volume (if current close > previous close)
+2.OBV = previous OBV - volume (if current close < previous close)
+3.OBV = previous OBV + 0 (if current close == previous close)
+1.9	Before you return the OBV from exec, make sure you save the previous OBV and stock prices in the respective fields.
+1.10	Save your changes to OnBalanceVolume.java.
+2	Deploy the JAR
+2.1	Build the project to create the stockudfs.jar file.
+3	Write the Pig Script
+3.1	Create a new text file in the Pig project in Eclipse named stockvolume.pig . 
+3.2	Using the register command, register stockudfs.jar:
+register stockudfs.jar;
+3.3	Load the stock prices from the stocksA / NYSE_daily_prices_A.cvs file in HDFS:
+stockdata = LOAD 'stocksA' using PigStorage(',') AS
+(exchange:chararray,
+   symbol:chararray,
+date:chararray,
+open:float,
+high:float,
+low:float,
+close:float,
+volume:int);
+3.4	Create a group that contains the stock’s symbol, date, volume and closing price:stocks_all = FOREACH stockdata GENERATE symbol, date, close, volume;
+3.5	Filter the group by the symbol specified from the command line:
+stocks_filter = FILTER stocks_all BY symbol == '$symbol';
+3.6	Order the remaining stocks by date ascending:
+stocks_sorted = ORDER stocks_filter BY date ASC;
+3.7	Use the OnBalanceVolume UDF to compute the on-balance volume of the specified stock:obv_result = FOREACH stocks_sorted GENERATE symbol, date, stockudfs.OnBalanceVolume(volume, close) AS obv;
+3.8	Dump the results:dump obv_result;
+3.9	Save your changes to stockvolume.pig.
+4	Run the Pig Script
+4.1	 Run the Pig script, using “AVA” as the symbol parameter:
+# cd ~/java/workspace/Pig/
+# pig -param symbol=AVA stockvolume.pig
+4.2	The results should include the stock symbol, date, and the on-balance volume of the stock on that particular date. For example, the ending output of AVA should look like:
+(AVA,2010-02-02,52525800)
+(AVA,2010-02-03,52336000)
+(AVA,2010-02-04,52184800)
+(AVA,2010-02-05,51843300)
+(AVA,2010-02-08,51636000)
+ 	Result: This lab uses Pig to compute the on-balance volume of a collection of stock prices. You used the DUMP command to verify the task, but you could have used a STORE command and saved the results to files in HDFS.
